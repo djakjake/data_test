@@ -1,0 +1,6 @@
+pip
+numpy
+pandas
+openpyxl
+h5py
+tables
