@@ -45,15 +45,15 @@ BYTE_TO_MB = 1 / np.square(1024).item()
 
 class test:
     operations = ['read','write']
-    colors = {'npy_np' : 'r',
-              'csv_pd' : 'orange',
-              'xlsx_pd': 'y',
+    colors = {'npy_np' : '#ff0000',
+              'csv_pd' : '#ffa500',
+              'xlsx_pd': '#ffff00',
               'h5df_h5': '#00ff00',
               'h5df_tb': '#00cc00',
               'h5df_pd': '#009900',
-              'pkl_pkl': 'b',
-              'ds_sql' : 'c',
-              'ds_sql' : 'm', # TODO
+              'pkl_pkl': '#0000ff',
+              'ds_sql' : '#00ffff',
+              'ds_pd'  : '#00cccc', # TODO
               }
     methods = list(colors.keys())
     shapes = list(itertools.product(opts.rows,opts.columns))
@@ -348,34 +348,28 @@ def add_test_data(operation,method,test_time,shape=None,replicant=None,Ncells=No
 def generate_plots():
     print("[generate_plots]")
 
-    fig, ax = plt.subplots(figsize=(15,9), nrows=2, ncols=2, sharex=False, sharey=False)
+    fig, ax = plt.subplots(figsize=(15,8), nrows=2, ncols=1, sharex=False, sharey=False)
 
     for i,operation in enumerate(test.operations):
 
         for method, color in test.colors.items():
 
             data = test.data.loc[(operation,method)]
-            ax[i,0].scatter(data.size_MB, data.test_time, alpha=0.5, color=color)
-            ax[i,1].scatter(data.size_MB, data.Ncells, alpha = 0.5, color=color)
+            ax[i].scatter(data.Ncells, data.rate, alpha=0.5, color=color)
 
             data_ = data.groupby(level='shape').mean()
-            ax[i,0].plot(data_.size_MB, data_.test_time, color=color, label=method)
-            ax[i,1].plot(data_.size_MB, data_.Ncells, color=color, label=method)
+            ax[i].plot(data_.Ncells, data_.rate, color=color, label=method)
 
-        ax[i,0].set_ylabel('Time [s]')
-        ax[i,1].set_xlabel('Cell Size')
+        ax[i].set_title(operation.title())
+        ax[i].set_xlabel('Cell Size')
+        ax[i].set_ylabel('Rate [MB/s]')
 
-        for j in range(2):
+        _,xmax = ax[i].get_xlim()
+        _,ymax = ax[i].get_ylim()
+        ax[i].set_xlim([0,xmax])
+        ax[i].set_ylim([0,ymax])
 
-            ax[i,j].set_title(operation)
-            ax[i,j].set_xlabel('Size [MB]')
-
-            _,xmax = ax[i,j].get_xlim()
-            _,ymax = ax[i,j].get_ylim()
-            ax[i,j].set_xlim([0,xmax])
-            ax[i,j].set_ylim([0,ymax])
-
-            ax[i,j].legend()
+        ax[i].legend()
 
     plt.tight_layout()
 
