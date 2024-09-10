@@ -44,26 +44,7 @@ opts = parser.parse_args()
 BYTE_TO_MB = 1 / np.square(1024).item()
 
 class test:
-    shapes = list(itertools.product(opts.rows,opts.columns))
-    columns = ['size_MB','size','test_time']
-    read_times = {'npy_np' : [],
-                  'csv_pd' : [],
-                  'xlsx_pd': [],
-                  'h5df_h5': [],
-                  'h5df_tb': [],
-                  'h5df_pd': [],
-                  'pkl_pkl': [],
-                  'ds_sql' : [],
-                  }
-    write_times = {'npy_np': [],
-                  'csv_pd' : [],
-                  'xlsx_pd': [],
-                  'h5df_h5': [],
-                  'h5df_tb': [],
-                  'h5df_pd': [],
-                  'pkl_pkl': [],
-                  'ds_sql' : [],
-                  }
+    operations = ['read','write']
     colors = {'npy_np' : 'r',
               'csv_pd' : 'orange',
               'xlsx_pd': 'y',
@@ -72,48 +53,65 @@ class test:
               'h5df_pd': '#009900',
               'pkl_pkl': 'b',
               'ds_sql' : 'c',
+              'ds_sql' : 'm', # TODO
               }
+    methods = list(colors.keys())
+    shapes = list(itertools.product(opts.rows,opts.columns))
+    replicants = range(opts.replicants)
+    columns = ['Ncells',
+               'size_MB',
+               'test_time'
+               ]
+    #data = None
+    names = dict(operation = operations,
+                 method = methods,
+                 shape = shapes,
+                 replicant = replicants,
+                 )
+    idx = pd.MultiIndex.from_product(names.values(), names=names.keys())
+    data = pd.DataFrame(index=idx, columns=columns)
+    data.sort_index(inplace=True)
 
 # =============================================================================
 # read functions
 # =============================================================================
 
-def read_npy(basename,shape,Nrows,Ncols,size,size_MB):
+def read_npy(basename,Nrows,Ncols,**kwargs):
     path = f"{basename}.npy"
-    print(f"\t\t[read_npy] {path}")
+    print(f"\t\t\t[read_npy] {path}")
 
     t0 = datetime.now()
     X_ = np.load(path)
     tf = datetime.now()
 
     test_time = get_test_time(t0,tf)
-    test.read_times['npy_np'].append([size_MB,size,test_time])
+    add_test_data('read','npy_np',test_time,**kwargs)
 
-def read_csv_pd(basename,shape,Nrows,Ncols,size,size_MB):
+def read_csv_pd(basename,Nrows,Ncols,**kwargs):
     path = f"{basename}.csv"
-    print(f"\t\t[read_csv_pd] {path}")
+    print(f"\t\t\t[read_csv_pd] {path}")
 
     t0 = datetime.now()
     X_ = pd.read_csv(path)
     tf = datetime.now()
 
     test_time = get_test_time(t0,tf)
-    test.read_times['csv_pd'].append([size_MB,size,test_time])
+    add_test_data('read','csv_pd',test_time,**kwargs)
 
-def read_xlsx_pd(basename,shape,Nrows,Ncols,size,size_MB):
+def read_xlsx_pd(basename,Nrows,Ncols,**kwargs):
     path = f"{basename}.xlsx"
-    print(f"\t\t[read_xlsx_pd] {path}")
+    print(f"\t\t\t[read_xlsx_pd] {path}")
 
     t0 = datetime.now()
     X_ = pd.read_excel(path)
     tf = datetime.now()
 
     test_time = get_test_time(t0,tf)
-    test.read_times['xlsx_pd'].append([size_MB,size,test_time])
+    add_test_data('read','xlsx_pd',test_time,**kwargs)
 
-def read_hdf5_h5(basename,shape,Nrows,Ncols,size,size_MB):
+def read_h5df_h5(basename,Nrows,Ncols,**kwargs):
     path = f"{basename}_h5.h5df"
-    print(f"\t\t[read_hdf5_h5] {path}")
+    print(f"\t\t\t[read_h5df_h5] {path}")
 
     t0 = datetime.now()
     with h5.File(path,'r') as f:
@@ -122,11 +120,11 @@ def read_hdf5_h5(basename,shape,Nrows,Ncols,size,size_MB):
     tf = datetime.now()
 
     test_time = get_test_time(t0,tf)
-    test.read_times['h5df_h5'].append([size_MB,size,test_time])
+    add_test_data('read','h5df_h5',test_time,**kwargs)
 
-def read_h5df_tb(basename,shape,Nrows,Ncols,size,size_MB):
+def read_h5df_tb(basename,Nrows,Ncols,**kwargs):
     path = f"{basename}_tb.h5df"
-    print(f"\t\t[read_h5df_tb] {path}")
+    print(f"\t\t\t[read_h5df_tb] {path}")
 
     t0 = datetime.now()
     with tb.open_file(path, mode='r') as f:
@@ -134,14 +132,22 @@ def read_h5df_tb(basename,shape,Nrows,Ncols,size,size_MB):
     tf = datetime.now()
 
     test_time = get_test_time(t0,tf)
-    test.read_times['h5df_tb'].append([size_MB,size,test_time])
+    add_test_data('read','h5df_tb',test_time,**kwargs)
 
-def read_h5df_pd(basename,shape,Nrows,Ncols,size,size_MB):
-    pass
+def read_h5df_pd(basename,Nrows,Ncols,**kwargs):
+    path = f"{basename}_pd.h5df"
+    print(f"\t\t\t[read_h5df_pd] {path}")
 
-def read_pkl_pkl(basename,shape,Nrows,Ncols,size,size_MB):
+    t0 = datetime.now()
+    X_ = pd.read_hdf(path)
+    tf = datetime.now()
+
+    test_time = get_test_time(t0,tf)
+    add_test_data('read','h5df_pd',test_time,**kwargs)
+
+def read_pkl_pkl(basename,Nrows,Ncols,**kwargs):
     path = f"{basename}.pkl"
-    print(f"\t\t[read_pkl_pkl] {path}")
+    print(f"\t\t\t[read_pkl_pkl] {path}")
 
     t0 = datetime.now()
     with open(path,'rb') as f:
@@ -149,11 +155,11 @@ def read_pkl_pkl(basename,shape,Nrows,Ncols,size,size_MB):
     tf = datetime.now()
 
     test_time = get_test_time(t0,tf)
-    test.read_times['pkl_pkl'].append([size_MB,size,test_time])
+    add_test_data('read','pkl_pkl',test_time,**kwargs)
 
-def read_ds_sql(basename,shape,Nrows,Ncols,size,size_MB):
+def read_ds_sql(basename,Nrows,Ncols,**kwargs):
     path = f"{basename}.db"
-    print(f"\t\t[read_ds_sql] {path}")
+    print(f"\t\t\t[read_ds_sql] {path}")
 
     t0 = datetime.now()
     cx = sql.connect(path)
@@ -166,15 +172,15 @@ def read_ds_sql(basename,shape,Nrows,Ncols,size,size_MB):
     tf = datetime.now()
 
     test_time = get_test_time(t0,tf)
-    test.read_times['ds_sql'].append([size_MB,size,test_time])
+    add_test_data('read','ds_sql',test_time,**kwargs)
 
 # =============================================================================
 # write functions
 # =============================================================================
 
-def write_npy(X,basename,shape,Nrows,Ncols,size,size_MB):
+def write_npy(X,basename,Nrows,Ncols,**kwargs):
     path = f"{basename}.npy"
-    print(f"\t\t[write_npy] {path}")
+    print(f"\t\t\t[write_npy] {path}")
 
     if os.path.isfile(path): os.remove(path)
 
@@ -183,11 +189,11 @@ def write_npy(X,basename,shape,Nrows,Ncols,size,size_MB):
     tf = datetime.now()
 
     test_time = get_test_time(t0,tf)
-    test.write_times['npy_np'].append([size_MB,size,test_time])
+    add_test_data('write','npy_np',test_time,**kwargs)
 
-def write_csv_pd(X,basename,shape,Nrows,Ncols,size,size_MB):
+def write_csv_pd(X,basename,Nrows,Ncols,**kwargs):
     path = f"{basename}.csv"
-    print(f"\t\t[write_csv_pd] {path}")
+    print(f"\t\t\t[write_csv_pd] {path}")
 
     if os.path.isfile(path): os.remove(path)
 
@@ -198,11 +204,11 @@ def write_csv_pd(X,basename,shape,Nrows,Ncols,size,size_MB):
     tf = datetime.now()
 
     test_time = get_test_time(t0,tf)
-    test.write_times['csv_pd'].append([size_MB,size,test_time])
+    add_test_data('write','csv_pd',test_time,**kwargs)
 
-def write_xlsx_pd(X,basename,shape,Nrows,Ncols,size,size_MB):
+def write_xlsx_pd(X,basename,Nrows,Ncols,**kwargs):
     path = f"{basename}.xlsx"
-    print(f"\t\t[write_xlsx_pd] {path}")
+    print(f"\t\t\t[write_xlsx_pd] {path}")
 
     if os.path.isfile(path): os.remove(path)
 
@@ -213,27 +219,27 @@ def write_xlsx_pd(X,basename,shape,Nrows,Ncols,size,size_MB):
     tf = datetime.now()
 
     test_time = get_test_time(t0,tf)
-    test.write_times['xlsx_pd'].append([size_MB,size,test_time])
+    add_test_data('write','xlsx_pd',test_time,**kwargs)
 
-def write_h5df_h5(X,basename,shape,Nrows,Ncols,size,size_MB):
+def write_h5df_h5(X,basename,Nrows,Ncols,**kwargs):
     path = f"{basename}_h5.h5df"
-    print(f"\t\t[write_h5df_h5] {path}")
+    print(f"\t\t\t[write_h5df_h5] {path}")
 
     if os.path.isfile(path): os.remove(path)
 
     t0 = datetime.now()
-    # TODO: support parallel HDF5?
+    # TODO: support parallel h5df?
     # TODO: support virtual datasets?
     with h5.File(path,'w') as f:
         X_ = f.create_dataset('X', data=X)
     tf = datetime.now()
 
     test_time = get_test_time(t0,tf)
-    test.write_times['h5df_h5'].append([size_MB,size,test_time])
+    add_test_data('write','h5df_h5',test_time,**kwargs)
 
-def write_h5df_tb(X,basename,shape,Nrows,Ncols,size,size_MB):
+def write_h5df_tb(X,basename,Nrows,Ncols,**kwargs):
     path = f"{basename}_tb.h5df"
-    print(f"\t\t[write_h5df_tb] {path}")
+    print(f"\t\t\t[write_h5df_tb] {path}")
 
     if os.path.isfile(path): os.remove(path)
 
@@ -243,14 +249,26 @@ def write_h5df_tb(X,basename,shape,Nrows,Ncols,size,size_MB):
     tf = datetime.now()
 
     test_time = get_test_time(t0,tf)
-    test.write_times['h5df_tb'].append([size_MB,size,test_time])
+    add_test_data('write','h5df_tb',test_time,**kwargs)
 
-def write_h5df_pd(X,basename,shape,Nrows,Ncols,size,size_MB):
-    pass
+def write_h5df_pd(X,basename,Nrows,Ncols,**kwargs):
+    path = f"{basename}_pd.h5df"
+    print(f"\t\t\t[write_h5df_pd] {path}")
 
-def write_pkl_pkl(X,basename,shape,Nrows,Ncols,size,size_MB):
+    if os.path.isfile(path): os.remove(path)
+
+    X_ = pd.DataFrame(X)
+
+    t0 = datetime.now()
+    X_.to_hdf(path, 'X', index=False)
+    tf = datetime.now()
+
+    test_time = get_test_time(t0,tf)
+    add_test_data('write','h5df_pd',test_time,**kwargs)
+
+def write_pkl_pkl(X,basename,Nrows,Ncols,**kwargs):
     path = f"{basename}.pkl"
-    print(f"\t\t[write_pkl_pkl] {path}")
+    print(f"\t\t\t[write_pkl_pkl] {path}")
 
     if os.path.isfile(path): os.remove(path)
 
@@ -260,11 +278,11 @@ def write_pkl_pkl(X,basename,shape,Nrows,Ncols,size,size_MB):
     tf = datetime.now()
 
     test_time = get_test_time(t0,tf)
-    test.write_times['pkl_pkl'].append([size_MB,size,test_time])
+    add_test_data('write','pkl_pkl',test_time,**kwargs)
 
-def write_ds_sql(X,basename,shape,Nrows,Ncols,size,size_MB):
+def write_ds_sql(X,basename,Nrows,Ncols,**kwargs):
     path = f"{basename}.db"
-    print(f"\t\t[write_ds_sql] {path}")
+    print(f"\t\t\t[write_ds_sql] {path}")
 
     if os.path.isfile(path): os.remove(path)
 
@@ -283,88 +301,83 @@ def write_ds_sql(X,basename,shape,Nrows,Ncols,size,size_MB):
     tf = datetime.now()
 
     test_time = get_test_time(t0,tf)
-    test.write_times['ds_sql'].append([size_MB,size,test_time])
+    add_test_data('write','ds_sql',test_time,**kwargs)
 
 # =============================================================================
 # test functions
 # =============================================================================
 
-def test_read(*args):
+def test_read(*args,**kwargs):
     basename = args[0]
-    print(f"\t[test_read] {basename}")
-    read_npy(*args)
-    read_csv_pd(*args)
-    read_xlsx_pd(*args)
-    read_hdf5_h5(*args)
-    read_h5df_tb(*args)
-    read_h5df_pd(*args)
-    read_pkl_pkl(*args)
-    read_ds_sql(*args)
+    print(f"\t\t[test_read] {basename}")
+    read_npy(*args,**kwargs)
+    read_csv_pd(*args,**kwargs)
+    read_xlsx_pd(*args,**kwargs)
+    read_h5df_h5(*args,**kwargs)
+    read_h5df_tb(*args,**kwargs)
+    read_h5df_pd(*args,**kwargs)
+    read_pkl_pkl(*args,**kwargs)
+    read_ds_sql(*args,**kwargs)
 
-def test_write(X,*args):
+def test_write(X,*args,**kwargs):
     shape = args[1]
     size_MB = args[-1]
-    print(f"\t[test_write] shape: {X.shape},size (MB): {size_MB}")
-    write_npy(X,*args)
-    write_csv_pd(X,*args)
-    write_xlsx_pd(X,*args)
-    write_h5df_h5(X,*args)
-    write_h5df_tb(X,*args)
-    write_h5df_pd(X,*args)
-    write_pkl_pkl(X,*args)
-    write_ds_sql(X,*args)
+    print(f"\t\t[test_write] shape: {X.shape},size (MB): {size_MB}")
+    write_npy(X,*args,**kwargs)
+    write_csv_pd(X,*args,**kwargs)
+    write_xlsx_pd(X,*args,**kwargs)
+    write_h5df_h5(X,*args,**kwargs)
+    write_h5df_tb(X,*args,**kwargs)
+    write_h5df_pd(X,*args,**kwargs)
+    write_pkl_pkl(X,*args,**kwargs)
+    write_ds_sql(X,*args,**kwargs)
 
 def get_test_time(t0,tf):
     dt = (tf - t0)
     return dt.total_seconds()
 
-def convert_test_data_to_dataframes(key):
-    print(f"[convert_test_data_to_dataframes] {key}")
-
-    test_ = getattr(test, key)
-
-    for key,val in test_.items():
-        df = pd.DataFrame(val,columns=test.columns)
-        df['rate'] = df.size_MB / df.test_time
-        df.sort_values('size', inplace=True)
-        test_[key] = df
+def add_test_data(operation,method,test_time,shape=None,replicant=None,Ncells=None,size_MB=None):
+    loc = (operation,method,shape,replicant)
+    data = [Ncells,size_MB,test_time]
+    test.data.loc[loc] = data
 
 # =============================================================================
 # plot
 # =============================================================================
 
-def generate_plot():
-    print("[generate_plot]")
+def generate_plots():
+    print("[generate_plots]")
 
-    fig, ax = plt.subplots(figsize=(15,9), nrows=2, ncols=1, sharex=True, sharey=False)
+    fig, ax = plt.subplots(figsize=(15,9), nrows=2, ncols=2, sharex=False, sharey=False)
 
-    ax[0].set_title('Read')
+    for i,operation in enumerate(test.operations):
 
-    for key, color in test.colors.items():
+        for method, color in test.colors.items():
 
-        kwargs = dict(color=color,
-                      label=key,
-                      alpha=0.5,
-                      )
+            data = test.data.loc[(operation,method)]
+            ax[i,0].scatter(data.size_MB, data.test_time, alpha=0.5, color=color)
+            ax[i,1].scatter(data.size_MB, data.Ncells, alpha = 0.5, color=color)
 
-        read_df = test.read_times[key]
-        ax[0].plot(read_df['size'], read_df.rate, **kwargs)
+            data_ = data.groupby(level='shape').mean()
+            ax[i,0].plot(data_.size_MB, data_.test_time, color=color, label=method)
+            ax[i,1].plot(data_.size_MB, data_.Ncells, color=color, label=method)
 
-        write_df = test.write_times[key]
-        ax[1].plot(write_df['size'], write_df.rate, **kwargs)
+        ax[i,0].set_ylabel('Time [s]')
+        ax[i,1].set_xlabel('Cell Size')
 
-    for i in range(2):
+        for j in range(2):
 
-        ax[i].set_xlabel('Array Size')
-        ax[i].set_ylabel('Rate [MB/s]')
+            ax[i,j].set_title(operation)
+            ax[i,j].set_xlabel('Size [MB]')
 
-        _,xmax = ax[i].get_xlim()
-        _,ymax = ax[i].get_ylim()
-        ax[i].set_xlim([0,xmax])
-        ax[i].set_ylim([0,ymax])
+            _,xmax = ax[i,j].get_xlim()
+            _,ymax = ax[i,j].get_ylim()
+            ax[i,j].set_xlim([0,xmax])
+            ax[i,j].set_ylim([0,ymax])
+
+            ax[i,j].legend()
 
     plt.tight_layout()
-    ax[0].legend()
 
     fig.savefig('test_results.pdf', dpi=300)
 
@@ -378,23 +391,29 @@ def main():
     os.chdir('data_test')
 
     for shape in test.shapes:
-        print(f"TEST: Nrows,Ncols: {shape}")
+        print(f"TEST: Shape {shape}")
+        for n in test.replicants:
+            print(f"\tTEST: Replicant {n}")
 
-        Nrows, Ncols = shape
-        size = Nrows * Ncols
+            Nrows, Ncols = shape
+            Ncells = Nrows * Ncols
 
-        X = np.random.randn(*shape)
-        size_MB = X.nbytes * BYTE_TO_MB
-        basename = os.path.join('data', f"{X.dtype.name}_{Nrows}_{Ncols}")
+            X = np.random.randn(*shape)
+            size_MB = X.nbytes * BYTE_TO_MB
+            basename = os.path.join('data', f"{X.dtype.name}_{Nrows}_{Ncols}")
 
-        args = (basename, shape, Nrows, Ncols, size, size_MB)
+            args = (basename,Nrows,Ncols)
+            kwargs = dict(shape = shape,
+                          replicant = n,
+                          Ncells = Ncells,
+                          size_MB = size_MB,
+                          )
 
-        test_write(X,*args)
-        test_read(*args)
+            test_write(X,*args,**kwargs)
+            test_read(*args,**kwargs)
 
-    convert_test_data_to_dataframes('read_times')
-    convert_test_data_to_dataframes('write_times')
-    generate_plot()
+    test.data['rate'] = test.data.size_MB / test.data.test_time
+    generate_plots()
 
 if "__main__" == __name__:
     main()
