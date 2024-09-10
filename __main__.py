@@ -53,7 +53,7 @@ class test:
               'h5df_pd': '#009900',
               'pkl_pkl': '#0000ff',
               'ds_sql' : '#00ffff',
-              'ds_pd'  : '#00cccc', # TODO
+              #'ds_pd'  : '#00cccc', # TODO
               }
     methods = list(colors.keys())
     shapes = list(itertools.product(opts.rows,opts.columns))
@@ -158,7 +158,7 @@ def read_pkl_pkl(basename,Nrows,Ncols,**kwargs):
     add_test_data('read','pkl_pkl',test_time,**kwargs)
 
 def read_ds_sql(basename,Nrows,Ncols,**kwargs):
-    path = f"{basename}.db"
+    path = f"{basename}_sql.db"
     print(f"\t\t\t[read_ds_sql] {path}")
 
     t0 = datetime.now()
@@ -173,6 +173,19 @@ def read_ds_sql(basename,Nrows,Ncols,**kwargs):
 
     test_time = get_test_time(t0,tf)
     add_test_data('read','ds_sql',test_time,**kwargs)
+
+def read_ds_pd(basename,Nrows,Ncols,**kwargs):
+    path = f"{basename}_pd.db"
+    print(f"\t\t\t[read_ds_pd] {path}")
+
+    t0 = datetime.now()
+    cx = sql.connect(path)
+    pd.read_sql(
+    # TODO
+    tf = datetime.now()
+
+    test_time = get_test_time(t0,tf)
+    add_test_data('read','ds_pd',test_time,**kwargs)
 
 # =============================================================================
 # write functions
@@ -281,7 +294,7 @@ def write_pkl_pkl(X,basename,Nrows,Ncols,**kwargs):
     add_test_data('write','pkl_pkl',test_time,**kwargs)
 
 def write_ds_sql(X,basename,Nrows,Ncols,**kwargs):
-    path = f"{basename}.db"
+    path = f"{basename}_sql.db"
     print(f"\t\t\t[write_ds_sql] {path}")
 
     if os.path.isfile(path): os.remove(path)
@@ -302,6 +315,18 @@ def write_ds_sql(X,basename,Nrows,Ncols,**kwargs):
 
     test_time = get_test_time(t0,tf)
     add_test_data('write','ds_sql',test_time,**kwargs)
+
+def write_ds_pd(X,basename,Nrows,Ncols,**kwargs):
+    path = f"{basename}_pd.db"
+    print(f"\t\t\t[write_ds_pd] {path}")
+
+    if os.path.isfile(path): os.remove(path)
+
+    t0 = datetime.now()
+    # TODO
+    tf = datetime.now()
+    test_time = get_test_time(t0,tf)
+    add_test_data('write','ds_pd',test_time,**kwargs)
 
 # =============================================================================
 # test functions
