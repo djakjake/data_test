@@ -4,3 +4,4 @@ pandas
 openpyxl
 h5py
 tables
+matplotlib
