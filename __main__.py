@@ -2,13 +2,12 @@ import numpy as np
 import pandas as pd
 import h5py as h5
 import tables as tb
-import pickle as pkl
-import sqlite3 as sql
 
 import argparse
 import itertools
 import matplotlib.pyplot as plt
 import os
+import shutil
 
 from datetime import datetime
 
@@ -20,18 +19,18 @@ parser = argparse.ArgumentParser()
 
 parser.add_argument('-col','--columns',
                     nargs = "*",
-                    default = (10 ** np.arange(4)).tolist(),
+                    default = np.array([1e4], dtype=int).tolist(),
                     type = int,
                     help = "the number of column(s) to use")
 
 parser.add_argument('-row', '--rows',
                     nargs = "*",
-                    default = (10 ** np.arange(6)).tolist(),
+                    default = np.array([1e2,5e2,1e3,5e3,1e4,2.5e4,5e4,7.5e4,1e5], dtype=int).tolist(),
                     type = int,
                     help = "the number of row(s) to use")
 
 parser.add_argument('-rep', '--replicants',
-                    default = 10,
+                    default = 1,
                     type = int,
                     help = "the number of times to repeat each experiment")
 
@@ -45,21 +44,15 @@ BYTE_TO_MB = 1 / np.square(1024).item()
 
 class test:
     operations = ['read','write']
-    colors = {'npy_np' : '#ff0000',
-              'csv_pd' : '#ffa500',
-              'xlsx_pd': '#ffff00',
-              'h5df_h5': '#00ff00',
-              'h5df_tb': '#00cc00',
-              'h5df_pd': '#009900',
-              'pkl_pkl': '#0000ff',
-              'ds_sql' : '#00ffff',
-              #'ds_pd'  : '#00cccc', # TODO
+    colors = {'hdf5_h5': '#ff0000',
+              'hdf5_tb': '#00ff00',
+              'hdf5_pd': '#0000ff',
               }
     methods = list(colors.keys())
     shapes = list(itertools.product(opts.rows,opts.columns))
     replicants = range(opts.replicants)
-    columns = ['Ncells',
-               'size_MB',
+    columns = ['size_read',
+               'size_write_MB',
                'test_time'
                ]
     #data = None
@@ -76,42 +69,9 @@ class test:
 # read functions
 # =============================================================================
 
-def read_npy(basename,Nrows,Ncols,**kwargs):
-    path = f"{basename}.npy"
-    print(f"\t\t\t[read_npy] {path}")
-
-    t0 = datetime.now()
-    X_ = np.load(path)
-    tf = datetime.now()
-
-    test_time = get_test_time(t0,tf)
-    add_test_data('read','npy_np',test_time,**kwargs)
-
-def read_csv_pd(basename,Nrows,Ncols,**kwargs):
-    path = f"{basename}.csv"
-    print(f"\t\t\t[read_csv_pd] {path}")
-
-    t0 = datetime.now()
-    X_ = pd.read_csv(path)
-    tf = datetime.now()
-
-    test_time = get_test_time(t0,tf)
-    add_test_data('read','csv_pd',test_time,**kwargs)
-
-def read_xlsx_pd(basename,Nrows,Ncols,**kwargs):
-    path = f"{basename}.xlsx"
-    print(f"\t\t\t[read_xlsx_pd] {path}")
-
-    t0 = datetime.now()
-    X_ = pd.read_excel(path)
-    tf = datetime.now()
-
-    test_time = get_test_time(t0,tf)
-    add_test_data('read','xlsx_pd',test_time,**kwargs)
-
-def read_h5df_h5(basename,Nrows,Ncols,**kwargs):
-    path = f"{basename}_h5.h5df"
-    print(f"\t\t\t[read_h5df_h5] {path}")
+def read_hdf5_h5(basename,Nrows,Ncols,**kwargs):
+    path = f"{basename}_h5.hdf5"
+    print(f"\t\t\t[read_hdf5_h5] {path}")
 
     t0 = datetime.now()
     with h5.File(path,'r') as f:
@@ -119,140 +79,59 @@ def read_h5df_h5(basename,Nrows,Ncols,**kwargs):
         size = X_.size
     tf = datetime.now()
 
+    size_read = os.path.getsize(path)
     test_time = get_test_time(t0,tf)
-    add_test_data('read','h5df_h5',test_time,**kwargs)
+    add_test_data('read','hdf5_h5',size_read,test_time,**kwargs)
 
-def read_h5df_tb(basename,Nrows,Ncols,**kwargs):
-    path = f"{basename}_tb.h5df"
-    print(f"\t\t\t[read_h5df_tb] {path}")
+def read_hdf5_tb(basename,Nrows,Ncols,**kwargs):
+    path = f"{basename}_tb.hdf5"
+    print(f"\t\t\t[read_hdf5_tb] {path}")
 
     t0 = datetime.now()
     with tb.open_file(path, mode='r') as f:
         X_ = f.root.X.read()
     tf = datetime.now()
 
+    size_read = os.path.getsize(path)
     test_time = get_test_time(t0,tf)
-    add_test_data('read','h5df_tb',test_time,**kwargs)
+    add_test_data('read','hdf5_tb',size_read,test_time,**kwargs)
 
-def read_h5df_pd(basename,Nrows,Ncols,**kwargs):
-    path = f"{basename}_pd.h5df"
-    print(f"\t\t\t[read_h5df_pd] {path}")
+def read_hdf5_pd(basename,Nrows,Ncols,**kwargs):
+    path = f"{basename}_pd.hdf5"
+    print(f"\t\t\t[read_hdf5_pd] {path}")
 
     t0 = datetime.now()
     X_ = pd.read_hdf(path)
     tf = datetime.now()
 
+    size_read = os.path.getsize(path)
     test_time = get_test_time(t0,tf)
-    add_test_data('read','h5df_pd',test_time,**kwargs)
-
-def read_pkl_pkl(basename,Nrows,Ncols,**kwargs):
-    path = f"{basename}.pkl"
-    print(f"\t\t\t[read_pkl_pkl] {path}")
-
-    t0 = datetime.now()
-    with open(path,'rb') as f:
-        X_ = pkl.load(f)
-    tf = datetime.now()
-
-    test_time = get_test_time(t0,tf)
-    add_test_data('read','pkl_pkl',test_time,**kwargs)
-
-def read_ds_sql(basename,Nrows,Ncols,**kwargs):
-    path = f"{basename}_sql.db"
-    print(f"\t\t\t[read_ds_sql] {path}")
-
-    t0 = datetime.now()
-    cx = sql.connect(path)
-    cursor = cx.cursor()
-    cmd = 'SELECT ' + ', '.join([f"col{x}" for x in range(Ncols)]) + ' FROM X'
-    cursor.execute(cmd)
-    rows = cursor.fetchall()
-    X_ = np.array(rows)
-    cx.close()
-    tf = datetime.now()
-
-    test_time = get_test_time(t0,tf)
-    add_test_data('read','ds_sql',test_time,**kwargs)
-
-def read_ds_pd(basename,Nrows,Ncols,**kwargs):
-    path = f"{basename}_pd.db"
-    print(f"\t\t\t[read_ds_pd] {path}")
-
-    t0 = datetime.now()
-    cx = sql.connect(path)
-    pd.read_sql(
-    # TODO
-    tf = datetime.now()
-
-    test_time = get_test_time(t0,tf)
-    add_test_data('read','ds_pd',test_time,**kwargs)
+    add_test_data('read','hdf5_pd',size_read,test_time,**kwargs)
 
 # =============================================================================
 # write functions
 # =============================================================================
 
-def write_npy(X,basename,Nrows,Ncols,**kwargs):
-    path = f"{basename}.npy"
-    print(f"\t\t\t[write_npy] {path}")
+def write_hdf5_h5(X,basename,Nrows,Ncols,**kwargs):
+    path = f"{basename}_h5.hdf5"
+    print(f"\t\t\t[write_hdf5_h5] {path}")
 
     if os.path.isfile(path): os.remove(path)
 
     t0 = datetime.now()
-    np.save(path,X)
-    tf = datetime.now()
-
-    test_time = get_test_time(t0,tf)
-    add_test_data('write','npy_np',test_time,**kwargs)
-
-def write_csv_pd(X,basename,Nrows,Ncols,**kwargs):
-    path = f"{basename}.csv"
-    print(f"\t\t\t[write_csv_pd] {path}")
-
-    if os.path.isfile(path): os.remove(path)
-
-    X_ = pd.DataFrame(X)
-
-    t0 = datetime.now()
-    X_.to_csv(path, index=False)
-    tf = datetime.now()
-
-    test_time = get_test_time(t0,tf)
-    add_test_data('write','csv_pd',test_time,**kwargs)
-
-def write_xlsx_pd(X,basename,Nrows,Ncols,**kwargs):
-    path = f"{basename}.xlsx"
-    print(f"\t\t\t[write_xlsx_pd] {path}")
-
-    if os.path.isfile(path): os.remove(path)
-
-    X_ = pd.DataFrame(X)
-
-    t0 = datetime.now()
-    X_.to_excel(path, index=False)
-    tf = datetime.now()
-
-    test_time = get_test_time(t0,tf)
-    add_test_data('write','xlsx_pd',test_time,**kwargs)
-
-def write_h5df_h5(X,basename,Nrows,Ncols,**kwargs):
-    path = f"{basename}_h5.h5df"
-    print(f"\t\t\t[write_h5df_h5] {path}")
-
-    if os.path.isfile(path): os.remove(path)
-
-    t0 = datetime.now()
-    # TODO: support parallel h5df?
+    # TODO: support parallel hdf5?
     # TODO: support virtual datasets?
     with h5.File(path,'w') as f:
         X_ = f.create_dataset('X', data=X)
     tf = datetime.now()
 
+    size_read = os.path.getsize(path)
     test_time = get_test_time(t0,tf)
-    add_test_data('write','h5df_h5',test_time,**kwargs)
+    add_test_data('write','hdf5_h5',size_read,test_time,**kwargs)
 
-def write_h5df_tb(X,basename,Nrows,Ncols,**kwargs):
-    path = f"{basename}_tb.h5df"
-    print(f"\t\t\t[write_h5df_tb] {path}")
+def write_hdf5_tb(X,basename,Nrows,Ncols,**kwargs):
+    path = f"{basename}_tb.hdf5"
+    print(f"\t\t\t[write_hdf5_tb] {path}")
 
     if os.path.isfile(path): os.remove(path)
 
@@ -261,12 +140,13 @@ def write_h5df_tb(X,basename,Nrows,Ncols,**kwargs):
         ds = f.create_array(f.root, 'X', X)
     tf = datetime.now()
 
+    size_read = os.path.getsize(path)
     test_time = get_test_time(t0,tf)
-    add_test_data('write','h5df_tb',test_time,**kwargs)
+    add_test_data('write','hdf5_tb',size_read,test_time,**kwargs)
 
-def write_h5df_pd(X,basename,Nrows,Ncols,**kwargs):
-    path = f"{basename}_pd.h5df"
-    print(f"\t\t\t[write_h5df_pd] {path}")
+def write_hdf5_pd(X,basename,Nrows,Ncols,**kwargs):
+    path = f"{basename}_pd.hdf5"
+    print(f"\t\t\t[write_hdf5_pd] {path}")
 
     if os.path.isfile(path): os.remove(path)
 
@@ -276,57 +156,9 @@ def write_h5df_pd(X,basename,Nrows,Ncols,**kwargs):
     X_.to_hdf(path, 'X', index=False)
     tf = datetime.now()
 
+    size_read = os.path.getsize(path)
     test_time = get_test_time(t0,tf)
-    add_test_data('write','h5df_pd',test_time,**kwargs)
-
-def write_pkl_pkl(X,basename,Nrows,Ncols,**kwargs):
-    path = f"{basename}.pkl"
-    print(f"\t\t\t[write_pkl_pkl] {path}")
-
-    if os.path.isfile(path): os.remove(path)
-
-    t0 = datetime.now()
-    with open(path,'wb') as f:
-        pkl.dump(X,f)
-    tf = datetime.now()
-
-    test_time = get_test_time(t0,tf)
-    add_test_data('write','pkl_pkl',test_time,**kwargs)
-
-def write_ds_sql(X,basename,Nrows,Ncols,**kwargs):
-    path = f"{basename}_sql.db"
-    print(f"\t\t\t[write_ds_sql] {path}")
-
-    if os.path.isfile(path): os.remove(path)
-
-    Nrows,Ncols = X.shape
-
-    t0 = datetime.now()
-    cx = sql.connect(path)
-    cursor = cx.cursor()
-    cmd = 'CREATE TABLE IF NOT EXISTS X (' + ', '.join([f'col{x} FLOAT' for x in range(Ncols)]) + ')'
-    cursor.execute(cmd)
-    cmd_ = 'INSERT INTO X (' + ', '.join([f'col{x}' for x in range(Ncols)]) + ') VALUES (' + ', '.join(['?' for _ in range(Ncols)]) + ')'
-    for x in X:
-        cursor.execute(cmd_, tuple(x))
-    cx.commit()
-    cx.close()
-    tf = datetime.now()
-
-    test_time = get_test_time(t0,tf)
-    add_test_data('write','ds_sql',test_time,**kwargs)
-
-def write_ds_pd(X,basename,Nrows,Ncols,**kwargs):
-    path = f"{basename}_pd.db"
-    print(f"\t\t\t[write_ds_pd] {path}")
-
-    if os.path.isfile(path): os.remove(path)
-
-    t0 = datetime.now()
-    # TODO
-    tf = datetime.now()
-    test_time = get_test_time(t0,tf)
-    add_test_data('write','ds_pd',test_time,**kwargs)
+    add_test_data('write','hdf5_pd',size_read,test_time,**kwargs)
 
 # =============================================================================
 # test functions
@@ -335,35 +167,25 @@ def write_ds_pd(X,basename,Nrows,Ncols,**kwargs):
 def test_read(*args,**kwargs):
     basename = args[0]
     print(f"\t\t[test_read] {basename}")
-    read_npy(*args,**kwargs)
-    read_csv_pd(*args,**kwargs)
-    read_xlsx_pd(*args,**kwargs)
-    read_h5df_h5(*args,**kwargs)
-    read_h5df_tb(*args,**kwargs)
-    read_h5df_pd(*args,**kwargs)
-    read_pkl_pkl(*args,**kwargs)
-    read_ds_sql(*args,**kwargs)
+    read_hdf5_h5(*args,**kwargs)
+    read_hdf5_tb(*args,**kwargs)
+    read_hdf5_pd(*args,**kwargs)
 
 def test_write(X,*args,**kwargs):
     shape = args[1]
-    size_MB = args[-1]
-    print(f"\t\t[test_write] shape: {X.shape},size (MB): {size_MB}")
-    write_npy(X,*args,**kwargs)
-    write_csv_pd(X,*args,**kwargs)
-    write_xlsx_pd(X,*args,**kwargs)
-    write_h5df_h5(X,*args,**kwargs)
-    write_h5df_tb(X,*args,**kwargs)
-    write_h5df_pd(X,*args,**kwargs)
-    write_pkl_pkl(X,*args,**kwargs)
-    write_ds_sql(X,*args,**kwargs)
+    size_write_MB = args[-1]
+    print(f"\t\t[test_write] shape: {X.shape},size (MB): {size_write_MB}")
+    write_hdf5_h5(X,*args,**kwargs)
+    write_hdf5_tb(X,*args,**kwargs)
+    write_hdf5_pd(X,*args,**kwargs)
 
 def get_test_time(t0,tf):
     dt = (tf - t0)
     return dt.total_seconds()
 
-def add_test_data(operation,method,test_time,shape=None,replicant=None,Ncells=None,size_MB=None):
+def add_test_data(operation,method,size_read,test_time,shape=None,replicant=None,size_write_MB=None):
     loc = (operation,method,shape,replicant)
-    data = [Ncells,size_MB,test_time]
+    data = [size_read,size_write_MB,test_time]
     test.data.loc[loc] = data
 
 # =============================================================================
@@ -379,14 +201,16 @@ def generate_plots():
 
         for method, color in test.colors.items():
 
-            data = test.data.loc[(operation,method)]
-            ax[i].scatter(data.Ncells, data.rate, alpha=0.5, color=color)
+            data = test.data.loc[(operation,method)].copy()
+            data.sort_values('size_read_MB', inplace=True)
+            ax[i].scatter(data.size_read_MB, data.rate, alpha=0.5, color=color)
 
             data_ = data.groupby(level='shape').mean()
-            ax[i].plot(data_.Ncells, data_.rate, color=color, label=method)
+            data_.sort_values('size_read_MB', inplace=True)
+            ax[i].plot(data_.size_read_MB, data_.rate, color=color, label=method)
 
         ax[i].set_title(operation.title())
-        ax[i].set_xlabel('Cell Size')
+        ax[i].set_xlabel('File Size [MB]')
         ax[i].set_ylabel('Rate [MB/s]')
 
         _,xmax = ax[i].get_xlim()
@@ -409,6 +233,9 @@ def main():
 
     os.chdir('data_test')
 
+    shutil.rmtree('data', ignore_errors=True)
+    os.mkdir('data')
+
     for shape in test.shapes:
         print(f"TEST: Shape {shape}")
         for n in test.replicants:
@@ -418,20 +245,20 @@ def main():
             Ncells = Nrows * Ncols
 
             X = np.random.randn(*shape)
-            size_MB = X.nbytes * BYTE_TO_MB
+            size_write_MB = X.nbytes * BYTE_TO_MB
             basename = os.path.join('data', f"{X.dtype.name}_{Nrows}_{Ncols}")
 
             args = (basename,Nrows,Ncols)
             kwargs = dict(shape = shape,
                           replicant = n,
-                          Ncells = Ncells,
-                          size_MB = size_MB,
+                          size_write_MB = size_write_MB,
                           )
 
             test_write(X,*args,**kwargs)
             test_read(*args,**kwargs)
 
-    test.data['rate'] = test.data.size_MB / test.data.test_time
+    test.data['size_read_MB'] = test.data['size_read'] * BYTE_TO_MB
+    test.data['rate'] = test.data.size_write_MB / test.data.test_time
     generate_plots()
 
 if "__main__" == __name__:
