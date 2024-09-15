@@ -25,12 +25,12 @@ parser.add_argument('-col','--columns',
 
 parser.add_argument('-row', '--rows',
                     nargs = "*",
-                    default = np.arange(1e2, 1e4+1e2, 1e2, dtype=int).tolist(),
+                    default = np.linspace(1e1, 1e3, 25, dtype=int).tolist(),
                     type = int,
                     help = "the number of row(s) to use")
 
 parser.add_argument('-rep', '--replicants',
-                    default = 1,
+                    default = 5,
                     type = int,
                     help = "the number of times to repeat each experiment")
 
