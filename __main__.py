@@ -25,7 +25,7 @@ parser.add_argument('-col','--columns',
 
 parser.add_argument('-row', '--rows',
                     nargs = "*",
-                    default = np.array([1e2,5e2,1e3,5e3,1e4,2.5e4,5e4,7.5e4,1e5], dtype=int).tolist(),
+                    default = np.arange(1e2, 1e4+1e2, 1e2, dtype=int).tolist(),
                     type = int,
                     help = "the number of row(s) to use")
 
